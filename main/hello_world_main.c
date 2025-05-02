@@ -31,13 +31,11 @@ void gpio_init()
     io_conf.pull_down_en = 0;
     io_conf.pull_up_en = 0;
     gpio_config(&io_conf);
-    gpio_set_level(GPIO_NUM_14, 1);
 }
 
 void hello_task(void *args)
 {
     while (true) {
-        esp_power_consumption_info(true);
         float current_temp = ds18b20_get_current_temp();
         printf("Temp: %.2f\n", current_temp);
         vTaskDelay(5000 / portTICK_RATE_MS);

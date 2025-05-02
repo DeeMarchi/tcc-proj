@@ -47,9 +47,24 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
             break;
         case MQTT_EVENT_PUBLISHED:
             ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
-            esp_mqtt_client_publish(client, "/test/ds18b20/temp_celsius", ds18b20_get_current_temp_str(), 0, 2, 0);
-            float current_temp = ds18b20_get_current_temp();
+            char publish_json_msg[128] = { 0 };
+            char json_format[] =
+                "{"
+                    "\"temperature\": %s,\n\t"
+                    "\"activationTemperature\": %s,\n\t"
+                    "\"relayActive\": %d\n\t"
+                "}";
             int current_gpio_level = gpio_get_level(GPIO_NUM_14);
+            snprintf(
+                publish_json_msg,
+                sizeof(publish_json_msg),
+                json_format,
+                ds18b20_get_current_temp_str(),
+                ds18b20_get_activation_temp_str(),
+                current_gpio_level
+            );
+            esp_mqtt_client_publish(client, "/test/ds18b20/temp_celsius", publish_json_msg, 0, 2, 0);
+            float current_temp = ds18b20_get_current_temp();
             float activation_temp = ds18b20_get_activation_temp();
             if (current_temp > activation_temp && current_gpio_level == 1) {
                 printf("Releasing the relay (closing the circuit and activating the fan)\n");
@@ -66,7 +81,8 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event)
             if (strncmp(temp_activation_topic, incoming_topic_buf, sizeof(temp_activation_topic)) == 0) {
                 char float_buf[32] = { 0 };
                 snprintf(float_buf, sizeof(float_buf), "%.*s", event->data_len, event->data);
-                ds18b20_set_activation_temp(atof(float_buf));
+                float new_activation_temp = atof(float_buf);
+                ds18b20_set_activation_temp(new_activation_temp);
             }
             break;
         case MQTT_EVENT_ERROR:
